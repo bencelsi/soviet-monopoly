@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang='en'>
+    
+    <head>
+        <title style="color: white">Soviet Monopoly</title>
+        <link rel='icon' type='image/x-icon' href='favicon.ico'>
+        <!------------------------------------------------>
+        <!-- S T Y L E -->
+        <!------------------------------------------------>
+        <style type="text/css">
+            body {
+                font-family: "Lucida Console", monospace;
+                margin: 0;
+                height: 100%;
+                text-align: center;
+                background-color: black;
+                color: rgb(0, 0, 0);
+            }
+
+            .card {
+                margin: 20px;
+                background-color: white;
+                color: black;
+                border-radius: 10px;
+                display: inline-block;
+                height: 250px;
+                width: 150px;
+            }
+
+            #board {
+                background: url('sovietMonopoly.jpeg');
+                background-size: 100% 100%;
+            }
+        </style>
+    </head>
+<body>
+    <br><br>
+    <canvas id="board" width=800 height=800></canvas>
+    <br><br>
+    <div id="message">
+        OK
+    </div>
+    <br>
+    <div>
+        <button id="button">Start Game</button>
+    </div>
+</body>
+<script>
+    const BOARD_SIZE = 800
+    const STEP_SIZE = .14 * BOARD_SIZE
+    const OFFSET = .04 * BOARD_SIZE
+    const MIN_POS = .05 * BOARD_SIZE
+    const MAX_POS = .96 * BOARD_SIZE
+
+    const canvas = document.getElementById("board");
+    const ctx = canvas.getContext("2d");
+
+    let numPlayers = 4
+    let foodPrice = 2
+
+    //0: position, 1: rubles, 2:guns, 3: starvation
+    let playerStats = []
+
+    let currentPlayer = 0
+
+    document.getElementById("button").onclick = function() {
+        let roll = random(1, 6)
+        playerStats[currentPlayer][0] = (playerStats[currentPlayer][0] + roll) % 24
+
+        ctx.clearRect(0, 0, BOARD_SIZE, BOARD_SIZE)
+        renderPlayers()
+
+        let squareType = squareValues[playerStats[currentPlayer][0]]
+        if (squareType == "HARD LABOR") {
+            alert(hardLaborCards[random(0, hardLaborCards.length - 1)])
+        } else if (squareType == "PROPAGANDA") {
+            alert(propagandaCards[random(0, propagandaCards.length - 1)])
+        }
+        currentPlayer = currentPlayer == numPlayers - 1 ? 0 : currentPlayer + 1
+    }
+
+    function endTurn() {
+        
+    }
+
+    function drawCard(text) {
+        ctx.beginPath(); // Start a new path
+        ctx.rect(220, 120, 360, 150); // Add a rectangle to the current path
+        ctx.fillStyle ="brown"
+        ctx.fill(); // Render the path
+        ctx.lineWidth = 10
+        ctx.stroke(); // Render the path
+        ctx.fillStyle =  "black" 
+        ctx.font = "16px Verdana";
+        ctx.fillText(text, 240, 150)
+    }
+
+    //drawCard()
+
+    for (let i = 0; i < numPlayers; i++) {
+        playerStats[i] = [0, 100, 0, 0]
+    }
+
+
+    const playerColors = [
+        ["pink", "darkRed"],
+        ["lightblue", "darkblue"],
+        ["lightyellow", `rgb(139, 128, 0)`],
+        ["lightgreen", "darkgreen"]
+    ]
+    
+
+    const playerOffsets = [
+        [[0, 0]],
+        [[20, 0], [-20, 0]],
+        [[-20, 20], [20, 20], [0,-20]],
+        [[20, 20], [-20, 20], [20,-20], [-20,-20]]
+    ]
+    
+    const squareValues = [
+        "OVERTHROW",
+        "HARD LABOR",
+        "INFLATION",
+        "BRIBERY",
+        "GREAT PURGE",
+        "PROPAGANDA",
+        "WAGES",
+        "VODKA",
+        "INFLATION",
+        "BLACK MARKET",
+        "ROBBERY",
+        "PROPAGANDA",
+        "THE GULAG",
+        "HARD LABOR",
+        "INFLATION",
+        "BRIBERY",
+        "KGB RAID",
+        "PROPAGANDA",
+        "HUNGER",
+        "STALIN SAYS",
+        "ROADKILL",
+        "BLACK MARKET",
+        "ROBBERY",
+        "PROPAGANDA"
+    ]
+
+    let pos = getPosition(3)
+    renderPlayers()
+
+    for (let i = 0; i < 24; i++) {
+        let position = getPosition(i)
+        //drawStar(position[0], position[1], 5, 11, 6)
+    }
+
+    function getPosition(index) {
+        let cornerOffset = index % 6 == 0 ? OFFSET : 0
+        if (index < 6) {
+            return [MAX_POS - cornerOffset, MAX_POS - OFFSET - index * STEP_SIZE]
+        } else if (index < 12) {
+            return [MAX_POS - OFFSET - (index - 6) * STEP_SIZE, MIN_POS + cornerOffset]
+        } else if (index < 18) {
+            return [MIN_POS + cornerOffset, MIN_POS + OFFSET + (index - 12) * STEP_SIZE]
+        } else {
+            return [MIN_POS + OFFSET + (index - 18) * STEP_SIZE, MAX_POS - cornerOffset]
+        }
+    }
+
+    let hardLaborCards = [
+        "SLAP YOURSELF IN THE FACE 5 TIMES",
+        "KICK A WALL 10 TIMES",
+        "BREAK SOMETHING",
+        "DO 5 PUSH-UPS",
+        "LIFT A CHAIR ABOVE YOUR HEAD",
+        "BITE YOUR ARM, HARD",
+        "SPIN IN A CIRCLE 10 TIMES",
+        "WRITE “I ♥ USSR” ON YOUR FOREHEAD",
+        "FIND THREE RED OBJECTS AND BUILD A SHRINE TO THE SOVIET UNION",
+        "BANG HEAD AGAINST A WALL 10 TIMES",
+        "PUT AN ICECUBE DOWN YOUR PANTS AND LEAVE IT THERE",
+        "SCREAM AS LOUD AS YOU CAN FOR 3 SECONDS",
+        "LICK THE SHOE OF COMRADE TO YOUR RIGHT",
+        "PULL OUT THREE OF YOUR HAIRS",
+        "TAKE OFF AN ARTICLE OF CLOTHING",
+        "DO 5 SIT UPS",
+        "DNA SAMPLE REQUIRED 	LICK THIS SQUARE:",
+        "DO 10 JUMPING JACKS",
+        "PICK YOUR NOSE, AND EAT IT",
+        "PICK UP THE COMRADE TO YOUR LEFT",
+        "EAT A SMALL PIECE OF THIS CARD",
+        "PUT YOUR FOOT IN THE  NEAREST TOILET",
+        "LICK THE EAR OF COMRADE TO YOUR LEFT",
+        "ALLOW YOUR COMRADES TO TICKLE YOU FOR 10 SECONDS",
+        "ARM WRESTLE COMRADE TO LEFT, LOSER PAYS WINNER 10 RUBLES",
+        "PLAY ROCK, PAPER, SICKLE WITH PLAYER TO RIGHT, LOSER PAYS WINNER 10 RUBLES",
+        "THUMB WRESTLE PLAYER TO LEFT, LOSER PAYS WINNER 10 RUBLES",
+        "HAVE A  STARING CONTEST WITH COMRADE TO LEFT,  LOSER PAYS WINNER 10 RUBLES"
+    ]
+
+    let propagandaCards = [
+        "CHASED BY HUNGRY DOG! MOVE AHEAD 1 SPACE",
+        "CHASED BY HUNGRY BEAR! 	MOVE AHEAD 2 SPACES",
+        "CHASED BY HUNGRY PEASANTS! 	MOVE AHEAD 3 SPACES",
+        "STALIN GIVES BRILLIANT SPEECH 	ALL COMRADES STAND AND APPLAUD, FIRST TO STOP GOES STRAIGHT TO GULAG",
+        "STUCK IN LINE WAITING FOR RESTROOM! 	MISS NEXT TURN",
+        "5-YEAR PLAN ANNOUNCED 	MISS NEXT 5 TURNS",
+        "THERE IS NO GOD 	DO NOTHING",
+        "KARL MARX ROLLS IN HIS GRAVE 	ROLL AGAIN",
+        "KGB MIXES UP YOUR IDENTITY! 	ROLL DIE.  IF EVEN, TAKE 1 FREE GUN.  IF ODD, GO TO GULAG.",
+        "SORRY, YOUR BRIBERY CARD HAS BEEN DECLINED 	RETURN A BRIBERY CARD",
+        "MOOSE AND SQUIRREL HIT BY TRUCK! 	GO STRAIGHT TO ROADKILL",
+        "ROUTINE CHECK! 	EACH COMRADE WITH NO BRIBERY CARDS PAYS 7 RUBLE FINE",
+        "CAPITALIST PIG! 	RICHEST COMRADE GIVES 5 RUBLES TO EVERY COMRADE WITH FEWER",
+        "VODKA TAX! 	EVERY PLAYER PAYS 1 RUBLES TO THE STATE",
+        "YOU FIND FROZEN MAN OUTSIDE! 	TAKE 8 RUBLES",
+        "ECONOMY MAKE BIG PROBLEM! 	SET FOOD PRICES TO",
+        "YOU ARE JUDGE OF STALIN APPRECIATION CONTEST! 	YOUR COMRADE WHO GIVES MOST SINCERE TRIBUTE TO STALIN RECEIVES 5 RUBLES FROM THE STATE",
+        "STALIN REMEMBERS ABOUT SOCIALISM!	DISTRIBUTE ALL RUBLES OWNED BY COMRADES EQUALLY BETWEEN ALL COMRADES (REMAINDER GOES TO STATE)",
+        "SOVIET UNION BOLDLY MOVING FORWARD! 	MOVE BACKWARDS 1 SPACE",
+        "IN SOVIET RUSSIA, LAW BREAKS YOU! 	TAKE 2 STALIN SAYS CARDS",
+        "YOUR NEIGHBOR REPORTS YOU BADMOUTH STALIN!  	IF YOU PLEAD GUILTY PAY FIVE RUBLES IF YOU PLEAD INNOCENT, PAY FIFTY RUBLES FOR LYING",
+        "STALIN OUTLAWS POVERTY!    ALL COMRADES WITH UNDER 30 RUBLES PAY 3 RUBLE FINE",
+        "COMRADE IS NAMED “WORKER OF THE MONTH” 	CELEBRATE BY TAKING A HARD LABOR CARD",
+        "IN SOVIET RUSSIA, PIG FARMS YOU! 	GO STRAIGHT TO GULAG",
+        "TAKE A HARD LABOR CARD, AND GIVE IT TO YOUR LEAST PATRIOTIC COMRADE",
+        "CONGRATULATIONS, YOU’VE BEEN DRAFTED! 	ROLL THE DIE TWICE.  IF YOU ROLLED SNAKE EYES, YOU HAVE DIED (SEE “DEATH”)",
+        "NUCLEAR WAR BREAKS OUT! 	ROLL THE DIE TWICE.  IF YOU ROLLED TWO 6’S, ALL COMRADES DIE (SEE “DEATH”)",
+        "BRIBERY CARD BLOW-OUT SALE!	YOU MAY PURCHASE BRIBERY CARD FOR 5 RUBLES",
+        "STALIN IS A TRENDSETTER 	ALL PLAYERS WITH MUSTACHES RECEIVE 5 RUBLE BONUS",
+        "STALIN IS FEELING GENEROUS! 	EVERY PLAYER RECEIVES 1 RUBLE",
+        "IN SOVIET RUSSIA, BANK ROBS YOU! 	PAY 6 RUBLES TO THE STATE",
+        "STALIN IS SO NICE, EVEN HIS PERSONALITY HAS A CULT FOLLOWING 	TAKE 25 RUBLES FROM THE STATE",
+    ]
+
+
+    function renderPlayers() {
+        //map of square to # of players
+        let spaceMap = []
+        for (let i = 0; i < numPlayers; i++) {
+            if (spaceMap[playerStats[i][0]] == undefined) {
+                spaceMap[playerStats[i][0]] = []
+            }
+            spaceMap[playerStats[i][0]].push(i)
+        }
+        for (space in spaceMap) {
+            let playersAtSquare = spaceMap[space]
+            for (let i = 0; i < playersAtSquare.length; i++) {
+                let position = getPosition(space)
+                let offset = playerOffsets[playersAtSquare.length - 1][i]
+                drawPlayer(position[0] + offset[0], 
+                    position[1] + offset[1], 
+                    playerColors[playersAtSquare[i]][0], playerColors[playersAtSquare[i]][1])
+            }
+        }
+    }
+
+    function drawPlayer(x, y, color, outerColor) {
+        drawStar(x, y, 5, 7, 13, color, outerColor)
+    }
+
+    function drawStar(cx, cy, spikes, innerRadius, outerRadius, innerColor, outerColor) {
+        var rot = Math.PI / 2 * 3;
+        var x = cx;
+        var y = cy;
+        var step = Math.PI / spikes;
+        ctx.beginPath();
+        ctx.moveTo(cx, cy - outerRadius)
+        for (i = 0; i < spikes; i++) {
+            x = cx + Math.cos(rot) * outerRadius;
+            y = cy + Math.sin(rot) * outerRadius;
+            ctx.lineTo(x, y)
+            rot += step
+            x = cx + Math.cos(rot) * innerRadius;
+            y = cy + Math.sin(rot) * innerRadius;
+            ctx.lineTo(x, y)
+            rot += step
+        }
+        ctx.lineTo(cx, cy - outerRadius);
+        ctx.closePath();
+        ctx.lineWidth = 8;
+        ctx.strokeStyle = outerColor;
+        ctx.stroke();
+        ctx.fillStyle = innerColor;
+        ctx.fill();
+    }
+
+    function drawCircle(x, y, color) {
+        //ctx.clearRect()
+        ctx.beginPath()
+        ctx.arc(x, y, 12, 0, 2 * Math.PI)
+		ctx.fillStyle = color
+		ctx.fill()
+        ctx.strokeStyle = "black"
+        ctx.lineWidth = 3
+		ctx.stroke()
+    }
+
+    function random(min, max) { return (min + (Math.floor(Math.random() * (max - min)))) }
+
+</script>
+
+<!-- 
+Roll Dice
+Move
+Display:
+    Hard Labor
+        Draw Hard Labor
+        "Do XYZ"
+        Finished or Refuse (go to Gulag)
+ -->
