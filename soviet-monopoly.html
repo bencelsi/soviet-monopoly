@@ -97,11 +97,14 @@
         if (players[currentPlayer].position >= 6 && players[currentPlayer].position - amount < 6) {
             setMessage("You've passed wages and earned 10₽")
             players[currentPlayer].rubles += 10
+            addButton("OK", doSquareAction)
         } else if (players[currentPlayer].position >= 18 && players[currentPlayer].position - roll < 18) {
             setMessage("You've passed hunger, pay " + foodPrice)
-            // Pass hunger
+            subtractRubles(foo)
+            addButton("OK", doSquareAction)
+        } else {
+            doSquareAction()
         }
-        doSquareAction()
     }
 
     function doSquareAction() {
@@ -119,12 +122,32 @@
                     endTurn()
                 })
                 addButton("Decline", () => {
-                    alert("Decline (go to gulag)")
                     goToGulag()
                 })
                 break
             case "INFLATION":
-                endTurn()
+                setMessage("Roll the dice. If 1, food prices go down 2. Otherwise, food prices go up 2")
+                addButton ("OK", () => {
+                    playSound("dice")
+                    let roll = random(1, 6)
+                    if (roll == 1) {
+                        if (foodPrice == 2) {
+                            setMessage("You rolled 1, but food prices can't get any lower.")
+                        } else {
+                            setMessage("You rolled " + roll + ", food prices decrease by 2")
+                            foodPrice -= 2
+                        }
+                        foodPrice 
+                    } else {
+                        if (foodPrice == 20) {
+                            setMessage("You rolled " + roll + ", but food prices are already at the maximum.")
+                        } else {
+                            setMessage("You rolled " + roll + ". Food prices increase by 2.")
+                            foodPrice += 2
+                        }
+                    }
+                    addButton("OK", endTurn) 
+                })
                 break
             case "BRIBERY": 
                 if (players[currentPlayer].rubles >= 15) {
@@ -138,13 +161,12 @@
                 } else {
                     setMessage("You are too poor to purchase a bribery card. Yikes.")
                     addButton("OK", endTurn)   
-                }    
-                
+                }
                 break
             case "GREAT PURGE":
                 let activePlayers = []
                 for (let i = 0; i < numPlayers; i++) {
-                    if (!players[i].alive && !players[i].inGulag) {
+                    if (isActive(i)) {
                         activePlayers.push(i)
                     }
                 }
@@ -198,17 +220,25 @@
                 propagandaCards[card][2]()
                 break
             case "WAGES":
-                addButton("OK", endTurn)
+                endTurn()
                 break
             case "VODKA":
                 setMessage("Take a shot of vodka (or equivalent non-alcoholic potato beverage if you aren't 6 yet)")
                 addButton("OK", endTurn)
                 break
-            case "INFLATION":
-                endTurn()
-                break
             case "BLACK MARKET":
-                endTurn()
+                if (players[currentPlayer].rubles >= 20) {
+                    setMessage("You may buy a gun for 20 rubles")
+                    addButton("Purchase gun", () => {
+                        players[currentPlayer].guns++
+                        players[currentPlayer].guns++
+                        endTurn()
+                    })
+                    addButton("Nah I'm Good", endTurn)
+                } else {
+                    setMessage("Yikes, you are too poor to buy a gun")
+                    addButton("OK", endTurn)
+                }
                 break
             case "ROBBERY":
                 endTurn()
@@ -216,16 +246,16 @@
             case "THE GULAG":
                 tryGulag()
                 break
-            case "KGB RAID":    
+            case "KGB RAID":
                 endTurn()
                 break
             case "HUNGER":
                 endTurn()
                 break
             case "STALIN SAYS":
-                endTurn()
+                setMessage(stalinSaysCards[random(0, stalinSaysCards.length)])
+                addButton("OK", endTurn)
                 break
-
             case "ROADKILL":
                 setMessage("You've found animal in the road! If you've any starvation tokents, you may return one")
                 addButton("OK", () => {
@@ -235,8 +265,6 @@
                     endTurn()
                 })
         }
-
-        //endTurn()
     }
 
     function subtractRubles(amount, player = currentPlayer) {
@@ -249,7 +277,7 @@
         setMessage("Uh oh! " + players[player].name + " owes " + amount + " rubles but only has " + players[player].rubles + 
             ". Will anyone help them pay the remaining " + amount - players[player].rubles + "?") 
         for (let i = 0; i < numPlayers; i++) {
-            if (i != player && players[i].alive && !players[i].inGulag && players[i].rubles >= amount - players[player].rubles) {
+            if (i != player && isActive(i) && players[i].rubles >= amount - players[player].rubles) {
                 addButton(players[i].name + " agrees to help", () => {
                     players[i].rubles -= amount - players[player].rubles
                     players[player].rubles = 0
@@ -279,8 +307,8 @@
     }
 
     function goToGulag(player = currentPlayer) {
-        console.log(player)
         players[player].starvationTokens++
+        players[player].turnsToSkip++
         if (players[player].starvationTokens == 3) {
             fuckingDie(player)
         } else {
@@ -318,7 +346,16 @@
     }
 
     function endTurn() {
-        currentPlayer = currentPlayer == numPlayers - 1 ? 0 : currentPlayer + 1
+        // 
+
+        do {
+            currentPlayer = currentPlayer == numPlayers - 1 ? 0 : currentPlayer + 1
+            if (players[currentPlayer].turnsToSkip > 0) {
+                players[currentPlayer].turnsToSkip--
+            } else if (players[currentPlayer].inGulag) {
+                players[currentPlayer].inGulag = false
+            }
+        } while (!players[currentPlayer].alive && !players[currentPlayer].turnsToSkip > 0)
         playerStats()
         addButton(playerNames[currentPlayer] + ", roll dice", rollDice)
     }
@@ -348,8 +385,6 @@
         ctx.font = "16px Verdana";
         ctx.fillText(text, 240, 150)
     }
-
-    //drawCard()
 
     
     const playerColors = [
@@ -400,11 +435,6 @@
         let position = getPosition(i)
         //drawStar(position[0], position[1], 5, 11, 6)
     }
-
-    function pay(player, amount) {
-
-    }
-
 
     let hardLaborCards = [
         "SLAP YOURSELF IN THE FACE 5 TIMES",
@@ -514,7 +544,7 @@
             addButton("OK", () => {
                 setMessage("Who gave sincerest tribute?")
                 for (i in players) {
-                    if (players[i].alive && !players[i].inGulag) {
+                    if (isActive(i)) {
                         addButton(players[i].name, () => {
                             players[i].rubles += 5
                             endTurn()
@@ -525,7 +555,7 @@
         }],
         ["STALIN REMEMBERS ABOUT SOCIALISM!	DISTRIBUTE ALL RUBLES OWNED BY COMRADES EQUALLY BETWEEN ALL COMRADES", () => {
             for (let i = 0; i < numPlayers; i++) {
-                if (players[i].alive) {
+                if (players[i].alive & !players[i]) {
 
                 }
             }
@@ -569,7 +599,14 @@
             addButton("OK", endTurn)
         }],
         ["STALIN IS FEELING GENEROUS!", "EVERY PLAYER RECEIVES 1 RUBLE", () => {
-            addButton("OK", endTurn)
+            addButton("OK", () => {
+                for (i in players) {
+                    if (isActive(i)) {
+                        players[i].rubles ++
+                    }
+                }
+                endTurn()
+            })
         }],
         ["IN SOVIET RUSSIA, BANK ROBS YOU!", "PAY 5 RUBLES TO THE STATE", () => {
             addButton("OK", () => {
@@ -679,6 +716,10 @@
 
     function drawFoodPriceCircle() {
         // TODO: implement
+    }
+
+    function isActive(player) {
+        return players[player].alive && !players[player].inGulag
     }
 
     function drawCircle(x, y, color) {
