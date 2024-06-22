@@ -16,6 +16,7 @@
             #board {
                 background: url('sovietMonopoly.jpeg');
                 background-size: 100% 100%;
+                background-repeat: no-repeat;
             }
 
             #message {
@@ -25,26 +26,53 @@
             .button {
                 margin: 100px;
             }
+
+            #ui {
+                color: white;
+                width: 300px;
+                height: 900px;
+            }
+
+            #player {
+                padding: 10px;
+                border-radius: 10px;
+            }
         </style>
     </head>
 <body>
     <br><br>
-    <canvas id="board" width=800 height=800></canvas>
+    <div >
+        <div style="display: inline-block;">
+            <canvas id="board" width=900 height=900 ></canvas>
+        </div>
+        <div id="ui" style="display: inline-block; vertical-align: top; position: relative">
+            <div style="vertical-align: top;">
+                <h1>Soviet Monopoly</h1>
+                <div id="message"></div>
+                <br>
+                <div id="buttons"></div>
+            </div>
+            <br><br>
+            <div id="playerStats" style="text-align: left; position: absolute; bottom: 0;"></div>
+        </div>
+    </div>
     <br><br>
-    <div id="message"></div>
-    <br><br>
-    <div id="buttons"></div>
+    
     <!-- <button id="diceButton">Roll Dice</button> -->
 </body>
 <script>
     // TODO: Opening: enter player names (then disregard?)
     // TODO: when hover over square, show what it does?
+    let colorEmojis = ["🔴", "⚫", "⚪", "🟤"]
+    let diceEmoji = ["⚀"]
+    let playerStatsDiv = get("playerStats")
+    
 
     function get(name) {
         return document.getElementById(name);
     }
 
-    const BOARD_SIZE = 800
+    const BOARD_SIZE = 900
     const STEP_SIZE = .14 * BOARD_SIZE
     const OFFSET = .04 * BOARD_SIZE
     const MIN_POS = .05 * BOARD_SIZE
@@ -73,7 +101,8 @@
             briberyCards: 0,
             alive: true,
             inGulag: false,
-            turnsToSkip: 0
+            turnsToSkip: 0,
+            stalinSaysCards: []
         }
         players[i] = player
     }
@@ -111,11 +140,19 @@
 
         let squareType = squareValues[players[currentPlayer].position]
 
-        // check if passed wages 
-        // 
         switch(squareType) {
             case "OVERTHROW":
-
+                let numGuns = 0
+                for (i in players) {
+                    if (isActive(i)) {
+                        numGuns += players[i].guns
+                    }
+                }
+                if (numGuns >= 8) {
+                    setMessage("You Win!")
+                } else {
+                    setMessage("You have " + numGuns + " guns but you need 8 to overthrow the state. Better luck next time!")
+                }
             case "HARD LABOR":
                 setMessage(hardLaborCards[random(0, hardLaborCards.length - 1)])
                 addButton("Done", () => {
@@ -175,43 +212,26 @@
                     setMessage("Oof, there are not enough players for great purge. Yikes")
                     addButton("OK", endTurn)
                 } else {
-                    for (let i = 0; i < activePlayers.length; i++) {
-                        setMessage(
-                            "YOU AND YOUR COMRADES ARE BEING INVESTIGATED FOR TRAITOROUS SHENANIGANS!\n" +
-                            "EACH COMRADE CAN CHOOSE TO DENY , OR RAT ON THEIR COMRADES.\n" +
-                            "IF THERE ARE NO RATS, EVERYONE IS SAFE.\n" + 
-                            "IF THERE IS 1 RAT, THE RAT RECEIVES 30 RUBLE REWARD, AND EVERYONE ELSE PAYS A 10 RUBLE FINE.\n" +
-                            "IF THERE IS MORE THAN 1 RAT, EVERYONE PAYS A 15 RUBLE FINE.\n\n" +
-                            "Everyone but" + players[i].name + ", close your eyes." + players[i].name + ", would you like to rat or deny?"
-                        )
-                        // TODO: how to do this?
-                        addButton("Rat", () => {
-                            rats.push(i)
-                        })
-                        addButton("Deny", () => {
-                            
-                        })
-                    }
-                }
-                setMessage("Everyone open their eyes.")
-                addButton("See results...", () => {
-                    if (rats.length == 0) {
-                        setMessage("No one was a rat... you are safe for now")
-                        
-                    } else if (rats.length == 1) {
-                        setMessage(players[rats[0]].name + "was a rat!... you are safe for now")
-                        players[rats[0]]
-                        addButton("OK", () => {
-                            players[rats[0]].rubles += 30
-                            
-                        })
-                    } else {
-                        for (let i = 0; i < rats.length; i++) {
-
+                    rats = greatPurgeCycle(activePlayers, currentPlayer + 1, rats)
+                    setMessage("Everyone open their eyes.")
+                    addButton("See results...", () => {
+                        if (rats.length == 0) {
+                            setMessage("No one was a rat... you are safe for now")
+                        } else if (rats.length == 1) {
+                            setMessage(players[rats[0]].name + "was a rat!... you are safe for now")
+                            players[rats[0]]
+                            addButton("OK", () => {
+                                players[rats[0]].rubles += 30    
+                            })
+                        } else {
+                            let names = ""
+                            for (let i = 0; i < rats.length; i++) {
+                                names += players[i].name
+                            }
                         }
-                    }
+                    })
                     addButton("OK", endTurn)
-                })
+                }
                 endTurn()
                 break
             case "PROPAGANDA":
@@ -247,6 +267,13 @@
                 tryGulag()
                 break
             case "KGB RAID":
+                setMessage("IF YOU HAVE ANY GUNS, RETURN ONE OF THEM AND PAY A 10 RUBLE FINE.")
+                addButton("OK", () => {
+                    if (players[currentPlayer].guns > 0) {
+                        guns--
+                        subtractRubles(10)
+                    }
+                })
                 endTurn()
                 break
             case "HUNGER":
@@ -267,8 +294,21 @@
         }
     }
 
+    function greatPurgeCycle(activePlayers, player, rats) {
+        if (player > activePlayers.length) {
+            return rats
+        }
+        setMessage("Everyone but" + players[i].name + ", close your eyes." + players[i].name + ", would you like to rat or deny?")
+        addButton("Rat", () => {
+            rats.push(player)
+            return greatPurgeCycle(activePlayers, player + 1, rats)
+        })
+        addButton("Deny", () => {
+            return greatPurgeCycle(activePlayers, player + 1, rats)
+        })
+    }
+
     function subtractRubles(amount, player = currentPlayer) {
-        console.log
         if (players[player].rubles >= amount) {
             players[player].rubles -= amount
             return
@@ -361,16 +401,31 @@
     }
 
     function playerStats() {
-        console.log("----------")
+        playerStatsDiv.innerHTML = ""
         for (let i = 0; i < numPlayers; i++) {
-            let player = players[i]
-            console.log(player.name + ": " + 
-                player.rubles + " rubles, " +
-                player.briberyCards + " bribery cards, " +
-                player.starvationTokens + " starvation tokens, " + 
-                player.guns + " guns")
+            let div = document.createElement("div")
+            div.id = "player"
+
+            let parens = ""
+            if (!players[i].alive) {
+                parens = " (dead)"
+            } else if (players[i].inGulag) {
+                parens = " (in gulag)"
+            }
+            div.innerHTML =
+                "<h3>" + colorEmojis[i] + " " + players[i].name + parens + "</h3>" +
+                players[i].rubles + " Rubles<br>" +
+                players[i].guns + " guns<br>" +
+                players[i].briberyCards + " bribery cards<br><br>"
+            if (currentPlayer == i) {
+                div.style.backgroundColor = `rgb(30,30,30)`
+            }
+            playerStatsDiv.appendChild(div)
         }
+
     }
+    playerStats()
+
 
     addButton(playerNames[currentPlayer] + ", roll dice", rollDice)
 
@@ -453,11 +508,11 @@
         "PULL OUT THREE OF YOUR HAIRS",
         "TAKE OFF AN ARTICLE OF CLOTHING",
         "DO 5 SIT UPS",
-        "DNA SAMPLE REQUIRED 	LICK THIS SQUARE:",
+        "DNA SAMPLE REQUIRED 	LICK THE SCREEN",
         "DO 10 JUMPING JACKS",
         "PICK YOUR NOSE, AND EAT IT",
         "PICK UP THE COMRADE TO YOUR LEFT",
-        "EAT A SMALL PIECE OF THIS CARD",
+        //"EAT A SMALL PIECE OF THIS CARD",
         "PUT YOUR FOOT IN THE  NEAREST TOILET",
         "LICK THE EAR OF COMRADE TO YOUR LEFT",
         "ALLOW YOUR COMRADES TO TICKLE YOU FOR 10 SECONDS",
