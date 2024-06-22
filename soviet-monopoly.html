@@ -29,7 +29,7 @@
 
             #ui {
                 color: white;
-                width: 300px;
+                width: 400px;
                 height: 900px;
             }
 
@@ -47,13 +47,15 @@
         </div>
         <div id="ui" style="display: inline-block; vertical-align: top; position: relative">
             <div style="vertical-align: top;">
-                <h1>Soviet Monopoly</h1>
+                <!-- <h1>Soviet Monopoly</h1> -->
+                <div id="die"></div>
+                <br>
                 <div id="message"></div>
                 <br>
                 <div id="buttons"></div>
             </div>
             <br><br>
-            <div id="playerStats" style="text-align: left; position: absolute; bottom: 0;"></div>
+            <div id="playerStats" style="text-align: right; position: absolute; bottom: 0; float: right;"></div>
         </div>
     </div>
     <br><br>
@@ -64,7 +66,7 @@
     // TODO: Opening: enter player names (then disregard?)
     // TODO: when hover over square, show what it does?
     let colorEmojis = ["🔴", "⚫", "⚪", "🟤"]
-    let diceEmoji = ["⚀"]
+    let dieEmoji = ["⚀", "⚁", "⚂", "⚃", "⚄", "⚅"]
     let playerStatsDiv = get("playerStats")
     
 
@@ -87,6 +89,7 @@
 
     let currentPlayer = 0
     let buttons = get("buttons")
+    let dieDiv = get("die")
     let playerNames = ["Ben", "Jules", "Maddie", "Rebecca"]
     let messageDisplay = get("message")
 
@@ -107,12 +110,6 @@
         players[i] = player
     }
 
-    function rollDice() {
-        playSound("dice")
-        let roll = random(1, 6)
-        move(roll)
-    }
-
     function moveTo(square) {
         players[currentPlayer].position = square
         renderPlayers()
@@ -126,6 +123,7 @@
         if (players[currentPlayer].position >= 6 && players[currentPlayer].position - amount < 6) {
             setMessage("You've passed wages and earned 10₽")
             players[currentPlayer].rubles += 10
+            playerStats()
             addButton("OK", doSquareAction)
         } else if (players[currentPlayer].position >= 18 && players[currentPlayer].position - roll < 18) {
             setMessage("You've passed hunger, pay " + foodPrice)
@@ -156,34 +154,16 @@
             case "HARD LABOR":
                 setMessage(hardLaborCards[random(0, hardLaborCards.length - 1)])
                 addButton("Done", () => {
-                    endTurn()
+                    nextTurn()
                 })
                 addButton("Decline", () => {
                     goToGulag()
                 })
                 break
             case "INFLATION":
-                setMessage("Roll the dice. If 1, food prices go down 2. Otherwise, food prices go up 2")
-                addButton ("OK", () => {
-                    playSound("dice")
-                    let roll = random(1, 6)
-                    if (roll == 1) {
-                        if (foodPrice == 2) {
-                            setMessage("You rolled 1, but food prices can't get any lower.")
-                        } else {
-                            setMessage("You rolled " + roll + ", food prices decrease by 2")
-                            foodPrice -= 2
-                        }
-                        foodPrice 
-                    } else {
-                        if (foodPrice == 20) {
-                            setMessage("You rolled " + roll + ", but food prices are already at the maximum.")
-                        } else {
-                            setMessage("You rolled " + roll + ". Food prices increase by 2.")
-                            foodPrice += 2
-                        }
-                    }
-                    addButton("OK", endTurn) 
+                setMessage("Roll the die. If 1, food prices go down 2. Otherwise, food prices go up 2")
+                addButton ("Continue", () => {
+                    addDie(inflation)
                 })
                 break
             case "BRIBERY": 
@@ -192,12 +172,12 @@
                     addButton("Purchase bribery card", () => {
                         players[currentPlayer].rubles -= 15
                         players[currentPlayer].briberyCards++
-                        endTurn()
+                        nextTurn()
                     })
-                    addButton("Nyet thanks", endTurn)    
+                    addButton("Nyet thanks", nextTurn)    
                 } else {
                     setMessage("You are too poor to purchase a bribery card. Yikes.")
-                    addButton("OK", endTurn)   
+                    addButton("OK", nextTurn)   
                 }
                 break
             case "GREAT PURGE":
@@ -210,58 +190,48 @@
                 let rats = []
                 if (activePlayers.length <=1) {
                     setMessage("Oof, there are not enough players for great purge. Yikes")
-                    addButton("OK", endTurn)
+                    addButton("OK", nextTurn)
                 } else {
-                    rats = greatPurgeCycle(activePlayers, currentPlayer + 1, rats)
-                    setMessage("Everyone open their eyes.")
-                    addButton("See results...", () => {
-                        if (rats.length == 0) {
-                            setMessage("No one was a rat... you are safe for now")
-                        } else if (rats.length == 1) {
-                            setMessage(players[rats[0]].name + "was a rat!... you are safe for now")
-                            players[rats[0]]
-                            addButton("OK", () => {
-                                players[rats[0]].rubles += 30    
-                            })
-                        } else {
-                            let names = ""
-                            for (let i = 0; i < rats.length; i++) {
-                                names += players[i].name
-                            }
-                        }
+                    setMessage("You and your comrades are accused of traitorous shenanigans!<br><br>" +
+                        "Each player can either deny the charges, or rat on their comrades.<br><br>" +
+                        "If all players deny charges, everyone is safe.<br><br>" +
+                        "If there is exactly 1 rat, the rat receives a 30 ruble reward, and deniers pay a 20 ruble fine<br><br>" +
+                        "If there are 2 or more rats, everyone pays a 20 ruble fine.<br><br>"
+                    )
+                    addButton("Let the purge begin", () => {
+                        greatPurge(activePlayers, 0, rats)
                     })
-                    addButton("OK", endTurn)
-                }
-                endTurn()
+                }   
                 break
             case "PROPAGANDA":
                 let card = random(0, propagandaCards.length - 1)
-                setMessage(propagandaCards[card][0] + "\n" + propagandaCards[card][1])
+                setMessage(propagandaCards[card][0] + "<br>" + propagandaCards[card][1])
                 propagandaCards[card][2]()
                 break
             case "WAGES":
-                endTurn()
+            case "HUNGER":
+                nextTurn()
                 break
             case "VODKA":
                 setMessage("Take a shot of vodka (or equivalent non-alcoholic potato beverage if you aren't 6 yet)")
-                addButton("OK", endTurn)
+                addButton("OK", nextTurn)
                 break
             case "BLACK MARKET":
                 if (players[currentPlayer].rubles >= 20) {
                     setMessage("You may buy a gun for 20 rubles")
                     addButton("Purchase gun", () => {
+                        subtractRubles(20)
                         players[currentPlayer].guns++
-                        players[currentPlayer].guns++
-                        endTurn()
+                        nextTurn()
                     })
-                    addButton("Nah I'm Good", endTurn)
+                    addButton("Nah I'm Good", nextTurn)
                 } else {
                     setMessage("Yikes, you are too poor to buy a gun")
-                    addButton("OK", endTurn)
+                    addButton("OK", nextTurn)
                 }
                 break
             case "ROBBERY":
-                endTurn()
+                nextTurn()
                 break
             case "THE GULAG":
                 tryGulag()
@@ -274,38 +244,82 @@
                         subtractRubles(10)
                     }
                 })
-                endTurn()
-                break
-            case "HUNGER":
-                endTurn()
+                nextTurn()
                 break
             case "STALIN SAYS":
                 setMessage(stalinSaysCards[random(0, stalinSaysCards.length)])
-                addButton("OK", endTurn)
+                addButton("OK", nextTurn)
                 break
             case "ROADKILL":
-                setMessage("You've found animal in the road! If you've any starvation tokents, you may return one")
+                setMessage("You found dead animal in the road! If you've any starvation tokens, you may return one")
                 addButton("OK", () => {
                     if (players[currentPlayer].starvationTokens > 0) {
                         players[currentPlayer].starvationTokens--
                     }
-                    endTurn()
+                    nextTurn()
                 })
         }
     }
 
-    function greatPurgeCycle(activePlayers, player, rats) {
-        if (player > activePlayers.length) {
-            return rats
+    function inflation(roll) {
+        if (roll == 1) {
+            if (foodPrice == 2) {
+                setMessage("You rolled 1, but food prices can't get any lower.")
+            } else {
+                setMessage("You rolled " + roll + ", food prices decrease by 2")
+                foodPrice -= 2
+            }
+            foodPrice 
+        } else {
+            if (foodPrice == 20) {
+                setMessage("You rolled " + roll + ", but food prices are already at the maximum.")
+            } else {
+                setMessage("You rolled " + roll + ". Food prices increase by 2.")
+                foodPrice += 2
+            }
         }
-        setMessage("Everyone but" + players[i].name + ", close your eyes." + players[i].name + ", would you like to rat or deny?")
-        addButton("Rat", () => {
-            rats.push(player)
-            return greatPurgeCycle(activePlayers, player + 1, rats)
-        })
-        addButton("Deny", () => {
-            return greatPurgeCycle(activePlayers, player + 1, rats)
-        })
+        addButton("OK", nextTurn) 
+    }
+
+    function greatPurge(activePlayers, i, rats) {
+        if (i >= activePlayers.length) {
+            setMessage("Everyone open their eyes.")
+            addButton("See results...", () => {
+                if (rats.length == 0) {
+                    setMessage("No one was a rat... you are safe... for now")
+                    addButton("OK", nextTurn)
+                } else if (rats.length == 1) {
+                    setMessage(players[rats[0]].name + " was a rat!... ")
+                    players[rats[0]]
+                    addButton("OK", () => {
+                        players[rats[0]].rubles += 30 
+                        nextTurn()   
+                    })
+                } else {
+                    let names = ""
+                    for (let i = 0; i < rats.length - 1; i++) {
+                        names += players[i].name + ", "
+                    }
+                    names += " and " + players[rats.length - 1].name 
+                    setMessage(names + " were rats!... ")
+                    addButton("OK", () => {
+                        players[rats[0]].rubles -= 10
+                        nextTurn()   
+                    })
+                }
+            })
+        } else {
+            setMessage("Everyone but " + players[activePlayers[i]].name + ", close your eyes. " 
+                + players[activePlayers[i]].name + ", would you like to deny the charges, or rat out your comrades?")
+            addButton("Deny", () => {
+                return greatPurge(activePlayers, i + 1, rats)
+            })
+            addButton("Rat", () => {
+                rats.push(i)
+                return greatPurge(activePlayers, i + 1, rats)
+            })
+            
+        }
     }
 
     function subtractRubles(amount, player = currentPlayer) {
@@ -321,7 +335,7 @@
                 addButton(players[i].name + " agrees to help", () => {
                     players[i].rubles -= amount - players[player].rubles
                     players[player].rubles = 0
-                    endTurn()
+                    nextTurn()
                 })
             }
             addButton("No one will help", () => {
@@ -333,12 +347,11 @@
     }
 
     function tryGulag(player = currentPlayer) {
-        console.log("tryGulag")
         if (players[player].briberyCards > 0) {
             setMessage(players[player].name + ", Use bribery card to avoid the gulag?")
             addButton("Da", () => {
                 player[player].briberyCards--
-                endTurn()
+                nextTurn()
             })
             addButton("Nyet", goToGulag)
         } else {
@@ -354,7 +367,7 @@
         } else {
             players[currentPlayer].position = 25
             renderPlayers()
-            endTurn()
+            nextTurn()
         }
     }
 
@@ -363,90 +376,103 @@
         players[player].position = 26
         players[player].alive = false
         renderPlayers()
-        addButton("OK", endTurn)
+        addButton("OK", nextTurn)
     }
 
     function setMessage(message) {
-        messageDisplay.innerHTML = message
+        console.log(message)
+        console.log(message.replace("\n", "<br>"))
+        messageDisplay.innerHTML = message.replace("\\n", "<br>")
     }
 
     function clearButtons() {
         buttons.innerHTML = ""
+        dieDiv.innerHTML = ""
+    }
+
+    function addDie(fn) {
+        let die = document.createElement("img")
+        die.src = "dice/dice2.gif"
+        die.onclick = () => {
+            die.onclick = null
+            setMessage("")
+            playSound("dice")
+            let roll = random(1, 6)
+            die.src = "dice/" + roll + ".jpg"
+            fn(roll)
+        }
+        dieDiv.appendChild(die)
     }
 
     function addButton(name, fn) {
-        let button = document.createElement("button")
-        button.innerHTML = name
-        button.onclick = () => {
-            setMessage("")
-            clearButtons()
-            fn()
+        if (name === "") { // Dice
+            
+        } else {
+            let button = document.createElement("button")
+            button.innerHTML = name
+            button.onclick = () => {
+                setMessage("")
+                clearButtons()
+                fn()
+            }
+            buttons.appendChild(button)
         }
-        buttons.appendChild(button)
     }
 
-    function endTurn() {
-        // 
-
-        do {
-            currentPlayer = currentPlayer == numPlayers - 1 ? 0 : currentPlayer + 1
-            if (players[currentPlayer].turnsToSkip > 0) {
-                players[currentPlayer].turnsToSkip--
-            } else if (players[currentPlayer].inGulag) {
-                players[currentPlayer].inGulag = false
-            }
-        } while (!players[currentPlayer].alive && !players[currentPlayer].turnsToSkip > 0)
+    function nextTurn(firstTurn = false) {
+        if (!firstTurn) {
+            do {
+                currentPlayer = currentPlayer == numPlayers - 1 ? 0 : currentPlayer + 1
+                if (players[currentPlayer].turnsToSkip > 0) {
+                    players[currentPlayer].turnsToSkip--
+                } else if (players[currentPlayer].inGulag) {
+                    players[currentPlayer].inGulag = false
+                }
+            } while (!players[currentPlayer].alive && !players[currentPlayer].turnsToSkip > 0)
+        }
+        setMessage(playerNames[currentPlayer] + ", roll die")
         playerStats()
-        addButton(playerNames[currentPlayer] + ", roll dice", rollDice)
+        addDie(move)
     }
 
     function playerStats() {
         playerStatsDiv.innerHTML = ""
         for (let i = 0; i < numPlayers; i++) {
+            let player = players[i]
             let div = document.createElement("div")
             div.id = "player"
 
             let parens = ""
-            if (!players[i].alive) {
+            if (!player.alive) {
                 parens = " (dead)"
-            } else if (players[i].inGulag) {
+            } else if (player.inGulag) {
                 parens = " (in gulag)"
             }
             div.innerHTML =
-                "<h3>" + colorEmojis[i] + " " + players[i].name + parens + "</h3>" +
-                players[i].rubles + " Rubles<br>" +
-                players[i].guns + " guns<br>" +
-                players[i].briberyCards + " bribery cards<br><br>"
-            if (currentPlayer == i) {
-                div.style.backgroundColor = `rgb(30,30,30)`
+                "<h3>" + colorEmojis[i] + " " + player.name + parens + "</h3>" +
+                player.rubles + " rubles<br>" + 
+                (player.guns > 0 ? player.guns + " guns<br>" : "") +
+                (player.briberyCards > 0 ? player.briberyCards + " bribery card" + 
+                    (player.briberyCards > 1 ? "s" : "") + "<br>" : "") + 
+                (player.starvationTokens > 0 ? player.starvationTokens + " starvation token" +
+                    (player.starvationTokens > 1 ? "s" : "") + "<br>" : "") +
+                (player.turnsToSkip > 0 ? "(" + players[i].turnsToSkip + " turns to skip)" : "")
+            if (i == currentPlayer) {
+                div.style.backgroundColor = `rgb(40, 40, 40)`
             }
             playerStatsDiv.appendChild(div)
         }
-
     }
     playerStats()
 
+    nextTurn(true)
 
-    addButton(playerNames[currentPlayer] + ", roll dice", rollDice)
-
-    function drawCard(text) {
-        ctx.beginPath(); // Start a new path
-        ctx.rect(220, 120, 360, 150); // Add a rectangle to the current path
-        ctx.fillStyle ="brown"
-        ctx.fill(); // Render the path
-        ctx.lineWidth = 10
-        ctx.stroke(); // Render the path
-        ctx.fillStyle =  "black" 
-        ctx.font = "16px Verdana";
-        ctx.fillText(text, 240, 150)
-    }
-
-    
+    let gray = "rgb(100, 100, 100)"
     const playerColors = [
-        ["pink", "darkRed"],
-        ["lightgray", "darkgray"],
-        ["rgb(111, 78, 55)", "rgb(92, 64, 51)"],
-        ["black", "gray"]
+        ["darkRed", gray],
+        ["lightgray", gray],
+        ["rgb(111, 78, 55)", gray],
+        ["black", gray]
     ]
 
     const playerOffsets = [
@@ -483,7 +509,6 @@
         "PROPAGANDA"
     ]
 
-    let pos = getPosition(3)
     renderPlayers()
 
     for (let i = 0; i < 24; i++) {
@@ -526,74 +551,74 @@
         ["CHASED BY HUNGRY DOG!", "MOVE AHEAD 1 SPACE", () => {
             addButton("OK", () => {
                 move(3)
-                endTurn()
+                nextTurn()
             })
         }],
         ["CHASED BY HUNGRY BEAR!", "MOVE AHEAD 2 SPACES", () => {
             addButton("OK", () => {
                 move(3)
-                endTurn()
+                nextTurn()
             })
         }],
         ["CHASED BY HUNGRY PEASANTS!", "MOVE AHEAD 3 SPACES", () => {
             addButton("OK", () => {
                 move(3)
-                endTurn()
+                nextTurn()
             })
         }],
         ["STALIN GIVES BRILLIANT SPEECH", "ALL COMRADES STAND AND APPLAUD, FIRST TO STOP GOES STRAIGHT TO GULAG", () => {
             setMessage("Which player stopped first?")
-            for (let player = 0; player < numPlayers; player++) {
-                if (players[player].alive) {
-                    addButton(player.name, () => {
-                        goToGulag(player)
+            for (let i = 0; i < numPlayers; i++) {
+                if (isActive(i)) {
+                    addButton(players[i].name, () => {
+                        tryGulag(player)
                     })
                 }
             }
         }],
         ["STUCK IN LINE WAITING FOR RESTROOM!", "MISS NEXT TURN", () => {
             players[currentPlayer].turnsToSkip = 1
-            addButton("OK", endTurn)
+            addButton("OK", nextTurn)
         }],
         ["5-YEAR PLAN ANNOUNCED", "MISS NEXT 5 TURNS", () => {
             players[currentPlayer].turnsToSkip = 5
-            addButton("OK", endTurn)
+            addButton("OK", nextTurn)
         }],
         ["THERE IS NO GOD", "DO NOTHING", () => {
-            addButton("OK", endTurn)
+            addButton("OK", nextTurn)
         }],
         ["KARL MARX ROLLS IN HIS GRAVE", "ROLL AGAIN", () => {
-            addButton("OK", endTurn)
+            addButton("OK", nextTurn)
         }],
         ["KGB MIXES UP YOUR IDENTITY!", "ROLL DIE. IF EVEN, TAKE 1 FREE GUN. IF ODD, GO TO GULAG.", () => {
-            addButton("OK", endTurn)
+            addButton("OK", nextTurn)
         }],
         ["SORRY, YOUR BRIBERY CARD HAS BEEN DECLINED", "RETURN A BRIBERY CARD", () => {
-            addButton("OK", endTurn)
+            addButton("OK", nextTurn)
         }],
         ["MOOSE AND SQUIRREL HIT BY TRUCK!", "GO STRAIGHT TO ROADKILL", () => {
-            addButton("OK", moveTo(20))
+            addButton("OK", () => { moveTo(20) })
         }],
         ["ROUTINE CHECK!", "EACH COMRADE WITH NO BRIBERY CARDS PAYS 7 RUBLE FINE", () => {
-            addButton("OK", endTurn)
+            addButton("OK", nextTurn)
         }],
         ["CAPITALIST PIG!", "RICHEST COMRADE GIVES 5 RUBLES TO EVERY COMRADE WITH FEWER", () => {
-            addButton("OK", endTurn)
+            addButton("OK", nextTurn)
         }],
         ["VODKA TAX!", "EVERY PLAYER PAYS 3 RUBLES TO THE STATE", () => {
             addButton("OK", () => {
                 for (i in players) {
                     subtractRubles(3, i)
                 }
-                endTurn()})
+                nextTurn()})
         }],
         ["YOU FIND FROZEN MAN OUTSIDE!", "TAKE 8 RUBLES", () => {
             addButton("OK", () => {
                 players[currentPlayer].rubles += 8
-                endTurn()})
+                nextTurn()})
         }],
         ["ECONOMY MAKE BIG PROBLEM!", "SET FOOD PRICES TO", () => {
-            addButton("OK", endTurn)
+            addButton("OK", nextTurn)
         }],
         ["YOU ARE JUDGE OF STALIN APPRECIATION CONTEST!", "COMRADE WHO GIVES SINCEREST TRIBUTE TO STALIN RECEIVES 5 RUBLES", () => {
             addButton("OK", () => {
@@ -602,7 +627,7 @@
                     if (isActive(i)) {
                         addButton(players[i].name, () => {
                             players[i].rubles += 5
-                            endTurn()
+                            nextTurn()
                         })
                     }
                 }
@@ -614,7 +639,7 @@
 
                 }
             }
-            addButton("OK", endTurn)
+            addButton("OK", nextTurn)
         }]
         ["SOVIET UNION BOLDLY MOVING FORWARD!", "MOVE BACKWARDS 1 SPACE", () => {
             addButton("OK", () => {
@@ -622,36 +647,35 @@
             })
         }],
         ["IN SOVIET RUSSIA, LAW BREAKS YOU!", "TAKE 2 STALIN SAYS CARDS", () => {
-            addButton("OK", endTurn)
+            addButton("OK", nextTurn)
         }],
-        ["NEIGHBOR SAYS YOU BADMOUTH STALIN!", "IF YOU PLEAD GUILTY, PAY 5 RUBLES. IF YOU PLEAD INNOCENT, PAY 50 RUBLES FOR LYING", 
-            () => {
-                addButton("Plead Guilty", subtractRubles(5))
-                addButton("Plead Innocent", subtractRubles(50))
-            }],
+        ["NEIGHBOR SAYS YOU BADMOUTH STALIN!", "IF YOU PLEAD GUILTY, PAY 5 RUBLES. IF YOU PLEAD INNOCENT, PAY 50 RUBLES FOR LYING", () => {
+                addButton("Plead Guilty", () => { subtractRubles(5); nextTurn() })
+                addButton("Plead Innocent", () => { subtractRubles(50); nextTurn() })
+        }],
         ["STALIN OUTLAWS POVERTY!", "ALL COMRADES WITH UNDER 30 RUBLES PAY 3 RUBLE FINE", () => {
-            addButton("OK", endTurn)
+            addButton("OK", nextTurn)
         }],
         ["YOU ARE NAMED “WORKER OF THE MONTH”", "CELEBRATE BY TAKING A HARD LABOR CARD", () => {
-            addButton("OK", endTurn)
+            addButton("OK", nextTurn)
         }],
         ["IN SOVIET RUSSIA, PIG FARMS YOU!", "GO STRAIGHT TO GULAG", () => {
             tryGulag()
         }],
-        ["TAKE A HARD LABOR CARD, AND GIVE IT TO YOUR LEAST PATRIOTIC COMRADE", () => {
-            addButton("OK", endTurn)
+        ["EMPLOYEE OF THE MONTH", "TAKE A HARD LABOR CARD, AND GIVE IT TO YOUR LEAST PATRIOTIC COMRADE", () => {
+            addButton("OK", nextTurn)
         }],
         ["CONGRATULATIONS, YOU’VE BEEN DRAFTED!", "ROLL THE DIE TWICE.  IF YOU ROLLED SNAKE EYES, YOU HAVE DIED", () => {
-            addButton("OK", endTurn)
+            addButton("OK", nextTurn)
         }],
         ["NUCLEAR WAR BREAKS OUT!", "ROLL THE DIE TWICE.  IF YOU ROLLED TWO 6’S, ALL COMRADES DIE", () => {
-            addButton("OK", endTurn)
+            addButton("OK", nextTurn)
         }],
         ["BRIBERY BLOW-OUT SALE!", "YOU MAY PURCHASE BRIBERY CARD FOR 5 RUBLES", () => {
-            addButton("OK", endTurn)
+            addButton("OK", nextTurn)
         }],
         ["STALIN IS A TRENDSETTER", "ALL PLAYERS WITH MUSTACHES RECEIVE 5 RUBLE BONUS", () => {
-            addButton("OK", endTurn)
+            addButton("OK", nextTurn)
         }],
         ["STALIN IS FEELING GENEROUS!", "EVERY PLAYER RECEIVES 1 RUBLE", () => {
             addButton("OK", () => {
@@ -660,17 +684,17 @@
                         players[i].rubles ++
                     }
                 }
-                endTurn()
+                nextTurn()
             })
         }],
         ["IN SOVIET RUSSIA, BANK ROBS YOU!", "PAY 5 RUBLES TO THE STATE", () => {
             addButton("OK", () => {
                 subtractRubles(5)
-                endTurn()
+                nextTurn()
             })
         }],
         ["STALIN IS SO POPULAR, HIS PERSONALITY HAS A CULT FOLLOWING", "TAKE 25 RUBLES FROM THE STATE", () => {
-            addButton("OK", endTurn)
+            addButton("OK", nextTurn)
         }],
     ]
 
@@ -693,7 +717,6 @@
         "STALIN SAYS LACK OF ETHNIC PRIDE IS DISGRACEFUL\nSPEAK ONLY IN RUSSIAN ACCENT UNTIL YOU PASS WAGES"
     ]
 
-
     function renderPlayers() {
         ctx.clearRect(0, 0, BOARD_SIZE, BOARD_SIZE)
         
@@ -709,7 +732,6 @@
             let playersAtSquare = spaceMap[space]
             for (let i = 0; i < playersAtSquare.length; i++) {
                 let position = getPosition(space)
-                console.log(position)
                 let offset = playerOffsets[playersAtSquare.length - 1][i]
                 drawPlayer(position[0] + offset[0], 
                     position[1] + offset[1], 
@@ -740,7 +762,7 @@
     }
 
     function drawPlayer(x, y, color, outerColor) {
-        drawStar(x, y, 5, 7, 13, color, outerColor)
+        drawStar(x, y, 5, 9, 18, color, outerColor)
     }
 
     function drawStar(cx, cy, spikes, innerRadius, outerRadius, innerColor, outerColor) {
@@ -762,7 +784,7 @@
         }
         ctx.lineTo(cx, cy - outerRadius);
         ctx.closePath();
-        ctx.lineWidth = 8;
+        ctx.lineWidth = 6;
         ctx.strokeStyle = outerColor;
         ctx.stroke();
         ctx.fillStyle = innerColor;
