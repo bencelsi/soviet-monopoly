@@ -285,15 +285,15 @@
         if (i >= activePlayers.length) {
             setMessage("Everyone open their eyes.")
             addButton("See results...", () => {
-                if (rats.length == 0) {
+                if (rats.length === 0) {
                     setMessage("No one was a rat... you are safe... for now")
                     addButton("OK", nextTurn)
-                } else if (rats.length == 1) {
+                } else if (rats.length === 1) {
                     setMessage(players[rats[0]].name + " was a rat!... ")
                     players[rats[0]]
                     addButton("OK", () => {
                         players[rats[0]].rubles += 30 
-                        nextTurn()   
+                        nextTurn()
                     })
                 } else {
                     let names = ""
@@ -362,7 +362,7 @@
     function goToGulag(player = currentPlayer) {
         players[player].starvationTokens++
         players[player].turnsToSkip++
-        if (players[player].starvationTokens == 3) {
+        if (players[player].starvationTokens === 3) {
             fuckingDie(player)
         } else {
             players[currentPlayer].position = 25
@@ -422,7 +422,7 @@
     function nextTurn(firstTurn = false) {
         if (!firstTurn) {
             do {
-                currentPlayer = currentPlayer == numPlayers - 1 ? 0 : currentPlayer + 1
+                currentPlayer = currentPlayer === numPlayers - 1 ? 0 : currentPlayer + 1
                 if (players[currentPlayer].turnsToSkip > 0) {
                     players[currentPlayer].turnsToSkip--
                 } else if (players[currentPlayer].inGulag) {
@@ -457,7 +457,7 @@
                 (player.starvationTokens > 0 ? player.starvationTokens + " starvation token" +
                     (player.starvationTokens > 1 ? "s" : "") + "<br>" : "") +
                 (player.turnsToSkip > 0 ? "(" + players[i].turnsToSkip + " turns to skip)" : "")
-            if (i == currentPlayer) {
+            if (i === currentPlayer) {
                 div.style.backgroundColor = `rgb(40, 40, 40)`
             }
             playerStatsDiv.appendChild(div)
@@ -723,7 +723,7 @@
         //map of square to # of players
         let spaceMap = []
         for (let i = 0; i < numPlayers; i++) {
-            if (spaceMap[players[i].position] == undefined) {
+            if (spaceMap[players[i].position] === undefined) {
                 spaceMap[players[i].position] = []
             }
             spaceMap[players[i].position].push(i)
@@ -741,7 +741,7 @@
     }
 
     function getPosition(index) {
-        let cornerOffset = index % 6 == 0 ? OFFSET : 0
+        let cornerOffset = index % 6 === 0 ? OFFSET : 0
         if (index < 6) {
             return [MAX_POS - cornerOffset, MAX_POS - OFFSET - index * STEP_SIZE]
         } else if (index < 12) {
@@ -750,12 +750,12 @@
             return [MIN_POS + cornerOffset, MIN_POS + OFFSET + (index - 12) * STEP_SIZE]
         } else if (index < 24) {
             return [MIN_POS + OFFSET + (index - 18) * STEP_SIZE, MAX_POS - cornerOffset]
-        } else if (index == 24) { // The Kremlin
-            return [50, 50]
-        } else if (index == 25) { // Siberia
-            return [100, 100]
-        } else if (index == 26) { // Mass Grave
-            return [100, 100]
+        } else if (index === 24) { // The Kremlin
+            return [.73 * BOARD_SIZE, .77 * BOARD_SIZE]
+        } else if (index === 25) { // Siberia
+            return [.18 * BOARD_SIZE, .18 * BOARD_SIZE]
+        } else if (index === 26) { // Mass Grave
+            return [.23 * BOARD_SIZE, .75 * BOARD_SIZE]
         } else {
             alert(index + " invalid")
         }
@@ -793,21 +793,19 @@
 
     function drawFoodPriceCircle() {
         // TODO: implement
+        foodPrice = 14
+        ctx.beginPath();
+        let x = .4 * BOARD_SIZE + ((foodPrice - 2) * .0217 * BOARD_SIZE)
+        let y = .8 * BOARD_SIZE - ((foodPrice - 2) * .0217 * BOARD_SIZE)
+        ctx.arc(x, y, 30, 0, 2 * Math.PI, false);
+        
+        ctx.lineWidth = 8;
+        ctx.strokeStyle = "red";
+        ctx.stroke();
     }
 
     function isActive(player) {
         return players[player].alive && !players[player].inGulag
-    }
-
-    function drawCircle(x, y, color) {
-        //ctx.clearRect()
-        ctx.beginPath()
-        ctx.arc(x, y, 12, 0, 2 * Math.PI)
-		ctx.fillStyle = color
-		ctx.fill()
-        ctx.strokeStyle = "black"
-        ctx.lineWidth = 3
-		ctx.stroke()
     }
 
     function random(min, max) { return (min + (Math.floor(Math.random() * (max - min)))) }
